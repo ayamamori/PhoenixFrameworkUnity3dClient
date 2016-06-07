@@ -26,7 +26,7 @@ public class Socket : MonoBehaviour{
 
 
 
-    private static int DEFAULT_TIMEOUT = 10000;//[ms]
+    public static int DEFAULT_TIMEOUT = 10000;//[ms]
 
     // Initializes the Socket
     //
@@ -112,7 +112,7 @@ public class Socket : MonoBehaviour{
         Debug.Log("Connected to "+EndPoint);
         FlushSendBuffer();
         if(!SkipHeartbeat){
-            StartCoroutine(HeartbeatTimer());
+            StartCoroutine(HeartbeatLoopTimer());
         }
         foreach (var callback in OnOpenCallbacks) {
             callback();
@@ -122,7 +122,7 @@ public class Socket : MonoBehaviour{
     void OnConnClose(object sender, CloseEventArgs e){
         Debug.Log("Connection closed");
         TriggerChanError();
-        DisConnect(null,e.Code);
+        DisConnect(Connect,e.Code);//Reconnect
         foreach (var callback in OnCloseCallbacks) {
             callback(e);
         }
@@ -130,6 +130,7 @@ public class Socket : MonoBehaviour{
 
     void OnConnError(object sender, ErrorEventArgs e){
         Debug.Log(e.Message);
+        TriggerChanError();
         foreach (var callback in OnErrorCallbacks) {
             callback(e);
         }
@@ -147,7 +148,7 @@ public class Socket : MonoBehaviour{
         return Conn.ReadyState;
     }
 
-    bool IsConnected(){
+    public bool IsConnected(){
         return ConnectionState() == WebSocketState.Open;
     }
 
@@ -182,7 +183,7 @@ public class Socket : MonoBehaviour{
         return Ref.ToString();
     }
 
-    private IEnumerator HeartbeatTimer(){
+    private IEnumerator HeartbeatLoopTimer(){
         while(IsConnected()) {
             yield return new WaitForSeconds(HeartbeatIntervalMs / 1000.0f);
             SendHeartbeat();

@@ -28,7 +28,7 @@ public class Push: MonoBehaviour {
         push.Timeout = _timeout;
         return push;
     }
-    void Resend(int _timeout){
+    public void Resend(int _timeout){
         this.Timeout = _timeout;
         CancelRefEvent();
         Sent = false;
@@ -42,8 +42,9 @@ public class Push: MonoBehaviour {
         Channel.Socket.Push(new Message<PayloadReq>(Channel.Topic, Event, PayloadReq, Ref));
     }
 
-    public void Receive(string status,Action callback){
+    public Push Receive(string status,Action callback){
         //TODO Stub
+        return this;
     }
 
     bool HasReceived(string _status){
@@ -60,6 +61,10 @@ public class Push: MonoBehaviour {
         if(RefEvent==null)return;
         this.Channel.Off(RefEvent);
          */
+    }
+
+    public void Trigger(string _event, PayloadResp payloadResp) {
+
     }
 
 }
