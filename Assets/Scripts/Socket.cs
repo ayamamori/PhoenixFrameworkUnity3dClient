@@ -12,7 +12,7 @@ public class Socket : MonoBehaviour{
     public int Timeout = DEFAULT_TIMEOUT;
     public int HeartbeatIntervalMs = 30000;//[ms]
     public int[] ReconnectAfterMs = new int[] {1000, 2000, 5000, 10000};// [ms]
-    public int LongPollerTimeout = 20000;
+    public int LongPollerTimeout = 20000;//[ms]
     public bool SkipHeartbeat = false;
 
     private WebSocket Conn;
@@ -24,6 +24,7 @@ public class Socket : MonoBehaviour{
     private List<Action<MessageEventArgs>> OnMessageCallbacks;
     private int Ref = 0;
 
+    private int ReconnectCount;
 
 
     public static int DEFAULT_TIMEOUT = 10000;//[ms]
@@ -64,7 +65,7 @@ public class Socket : MonoBehaviour{
         OnMessageCallbacks = new List<Action<MessageEventArgs>>();
     }
 
-    void DisConnect(Action callback, ushort code = (ushort)CloseStatusCode.NoStatus, string reason=""){
+    public void DisConnect(Action callback, ushort code = (ushort)CloseStatusCode.NoStatus, string reason=""){
         //Closing status code: https://triple-underscore.github.io/RFC6455-ja.html#section-7.4
         if(Conn !=null){
             Conn.OnClose -= OnConnClose;
@@ -78,16 +79,17 @@ public class Socket : MonoBehaviour{
         if(callback!=null)callback();
     }
 
-    void Connect(){
-        if(Conn !=null) return;
-
-        Conn = new WebSocket(EndPoint);
-        Conn.WaitTime = TimeSpan.FromMilliseconds(LongPollerTimeout);
-        Conn.OnOpen += OnConnOpen;
-        Conn.OnClose += OnConnClose;
-        Conn.OnError += OnConnError;
-        Conn.OnMessage += OnConnMessage;
-        Conn.Connect();
+    public void Connect() {
+        lock(this) {
+            if (Conn != null) return;
+            Conn = new WebSocket(EndPoint);
+            Conn.WaitTime = TimeSpan.FromSeconds(10);
+            Conn.OnOpen += OnConnOpen;
+            Conn.OnClose += OnConnClose;
+            Conn.OnError += OnConnError;
+            Conn.OnMessage += OnConnMessage;
+            Conn.Connect();
+        }
     }
 
     Socket OnOpen(Action callback){
@@ -110,9 +112,10 @@ public class Socket : MonoBehaviour{
     void OnConnOpen(object sender, EventArgs e)
     {
         Debug.Log("Connected to "+EndPoint);
-        FlushSendBuffer();
+        //FlushSendBuffer();
+        ReconnectCount=0;
         if(!SkipHeartbeat){
-            StartCoroutine(HeartbeatLoopTimer());
+            //StartCoroutine(HeartbeatLoopTimer());
         }
         foreach (var callback in OnOpenCallbacks) {
             callback();
@@ -121,21 +124,29 @@ public class Socket : MonoBehaviour{
 
     void OnConnClose(object sender, CloseEventArgs e){
         Debug.Log("Connection closed");
-        TriggerChanError();
-        DisConnect(Connect,e.Code);//Reconnect
+        //TriggerChanError();
+        StartCoroutine(DisConnectTimer(Connect,e.Code));//Reconnect
         foreach (var callback in OnCloseCallbacks) {
             callback(e);
         }
     }
 
     void OnConnError(object sender, ErrorEventArgs e){
-        Debug.Log(e.Message);
-        TriggerChanError();
+        Debug.Log("Connection error: "+e.Message);
+        //TriggerChanError();
         foreach (var callback in OnErrorCallbacks) {
             callback(e);
         }
     }
 
+    IEnumerator DisConnectTimer(Action callback, ushort code){
+        yield return new WaitForSeconds(ReconnectAfterMs[ReconnectCount]/1000.0f);
+        ReconnectCount++;
+        if(ReconnectCount>=ReconnectAfterMs.Length) ReconnectCount--;
+
+        Debug.Log("Connection retry");
+        DisConnect(callback,code);
+    }
 
     void TriggerChanError(){
         foreach (var chan in Channels){
@@ -156,14 +167,21 @@ public class Socket : MonoBehaviour{
         Channels = Channels.Where(c => !c.IsMember(channel.Topic)).ToList();
     }
 
-    private Channel CreateChannel(string topic, PayloadReq payload){
-        Channel channel = Channel.getInstance(topic,this,payload);
+    public void CreateChannel(){
+        CreateChannel("rooms:lobby").Join();
+    }
+    public Channel CreateChannel(string topic) {
+        return CreateChannel(topic, new PayloadReq());
+    }
+
+    public Channel CreateChannel(string topic, PayloadReq payload){
+        Channel channel = Channel.GetInstance(topic,this,payload);
         Channels.Add(channel);
         return channel;
     }
 
     public void Push(Message<PayloadReq> message){
-        var jsonMessage = JsonUtility.ToJson(message);
+        var jsonMessage = JsonUtility.ToJson(message);//FIXME: DOESN'T WORK
         Action callback = () => Conn.Send(JsonUtility.ToJson(jsonMessage));
         Debug.Log("Push message: "+jsonMessage);
         if(IsConnected()){
@@ -205,7 +223,7 @@ public class Socket : MonoBehaviour{
 
 
     private void OnConnMessage(object sender, MessageEventArgs e){
-        Message<PayloadResp> msg = JsonUtility.FromJson<Message<PayloadResp>>(e.Data);
+        Message<PayloadResp> msg = JsonUtility.FromJson<Message<PayloadResp>>(e.Data);//FIXME: MIGHT NOT WORK
         Debug.Log(msg);
         Channels.Where(c => c.IsMember(msg.Topic)).ToList().ForEach(c => c.Trigger(msg.Event, msg.Payload,msg.Ref));
 

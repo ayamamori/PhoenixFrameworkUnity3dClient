@@ -33,11 +33,11 @@ public class Channel : MonoBehaviour{
         public static string LEAVE = "phx_leave";
     }
 
-    public static Channel getInstance(string _topic, Socket _socket){
-		return getInstance(_topic, _socket, new PayloadReq());
+    public static Channel GetInstance(string _topic, Socket _socket){
+		return GetInstance(_topic, _socket, new PayloadReq());
 	}
 
-    public static Channel getInstance(string _topic, Socket _socket, PayloadReq _payload){
+    public static Channel GetInstance(string _topic, Socket _socket, PayloadReq _payload){
         Channel channel = _socket.gameObject.AddComponent<Channel>();
         channel.Config(_topic,_socket,_payload);
         return channel;
@@ -50,7 +50,7 @@ public class Channel : MonoBehaviour{
         PayloadReq = _payload;
         Timeout = _socket.Timeout;
         JoinedOnce = false;
-        JoinPush = Push.getInstance(this,CHANNEL_EVENTS.JOIN, PayloadReq,Timeout);
+        JoinPush = Push.GetInstance(this, CHANNEL_EVENTS.JOIN, PayloadReq, Timeout);
 
         JoinPush.Receive("ok",(nop) => {
             State = CHANNEL_STATES.JOINED;
@@ -132,18 +132,18 @@ public class Channel : MonoBehaviour{
     }
 
     bool CanPush(){
-        return Socket.IsConnected() && State == CHANNEL_STATES.JOINED;
+		return Socket.IsConnected() && State == CHANNEL_STATES.JOINED;
     }
 
-    Push Push(string _event, PayloadReq _payloadReq){
-        return Push(_event, _payloadReq, Timeout);
+    Push PushEvent(string _event, PayloadReq _payloadReq){
+        return PushEvent(_event, _payloadReq, Timeout);
     }
 
-    Push Push(string _event, PayloadReq _payloadReq, int timeout){
+    Push PushEvent(string _event, PayloadReq _payloadReq, int timeout){
         if(!JoinedOnce){
             throw new InvalidOperationException("tried to push '"+_event+"' to '"+Topic+"' before joining. Use Channel.Join() before pushing events");
         }
-        Push pushEvent = Push.getInstance(this, _event, _payloadReq, timeout);
+        Push pushEvent = Push.GetInstance(this, _event, _payloadReq, timeout);
         if(CanPush()){
             pushEvent.Send();
         }else{
@@ -173,7 +173,7 @@ public class Channel : MonoBehaviour{
             Debug.Log("leave topic: "+Topic);
             Trigger(CHANNEL_EVENTS.CLOSE,new PayloadResp("leave"));
         };
-        Push leavePush = Push.getInstance(this,CHANNEL_EVENTS.LEAVE, new PayloadReq(),timeout);
+        Push leavePush = Push.GetInstance(this,CHANNEL_EVENTS.LEAVE, new PayloadReq(),timeout);
         leavePush.Receive("ok", onClose)
             .Receive("timeout", onClose);
         leavePush.Send();
@@ -202,7 +202,7 @@ public class Channel : MonoBehaviour{
     }
 
 
-    string ReplyEventName(string refResp){
+    public string ReplyEventName(string refResp){
 		return "chan_reply_"+refResp;
     }
 

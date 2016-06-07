@@ -27,7 +27,7 @@ public class Push: MonoBehaviour {
     // payload - The payload, for example `{user_id: 123}`
     // timeout - The push timeout in milliseconds
     //
-    public static Push getInstance(Channel _channel, string _event, PayloadReq _payload, int _timeout){
+    public static Push GetInstance(Channel _channel, string _event, PayloadReq _payload, int _timeout){
         Push push = _channel.gameObject.AddComponent<Push>();
         push.Channel = _channel;
         push.Event = _event;
@@ -70,7 +70,7 @@ public class Push: MonoBehaviour {
         Channel.Off(RefEvent);
     }
 
-    void SetResponseListener(){
+    public void SetResponseListener(){
         WaitingResponse = true;
         Ref = Channel.Socket.MakeRef();
         RefEvent = Channel.ReplyEventName(Ref);
