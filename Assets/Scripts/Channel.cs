@@ -10,7 +10,7 @@ public class Channel : MonoBehaviour{
 
     CHANNEL_STATES State;
     PayloadReq PayloadReq;
-    int Timeout;
+    int Timeout;//[ms]
     bool JoinedOnce;
     Push JoinPush;
     Dictionary<string,Action<PayloadResp,string>> Bindings = new Dictionary<string, Action<PayloadResp, string>>();
@@ -52,12 +52,12 @@ public class Channel : MonoBehaviour{
         JoinedOnce = false;
         JoinPush = Push.getInstance(this,CHANNEL_EVENTS.JOIN, PayloadReq,Timeout);
 
-        JoinPush.Receive("ok",() => {
+        JoinPush.Receive("ok",(nop) => {
             State = CHANNEL_STATES.JOINED;
             PushBuffer.ForEach(events => events.Send());
         });
 
-        JoinPush.Receive("timeout",() => {
+        JoinPush.Receive("timeout",(nop) => {
             if(State!=CHANNEL_STATES.JOINING) return;
             Debug.Log("Timeout on topic: "+Topic+" "+JoinPush.Timeout);
             State = CHANNEL_STATES.ERRORED;
@@ -120,11 +120,11 @@ public class Channel : MonoBehaviour{
     void OnReply(Action<PayloadResp,string> callback){
         On(CHANNEL_EVENTS.REPLY, callback);
     }
-    void On(string _event, Action<PayloadResp,string> callback){
+    public void On(string _event, Action<PayloadResp,string> callback){
         Bindings.Add(_event,callback);
     }
 
-    void Off(string _event){
+    public void Off(string _event){
         Bindings = Bindings.Where(kvp => !kvp.Key.Equals(_event)).ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
     }
 
@@ -144,7 +144,7 @@ public class Channel : MonoBehaviour{
         if(CanPush()){
             pushEvent.Send();
         }else{
-            //TODO: pushEvent.StartTimeout();
+            pushEvent.SetResponseListener();
             PushBuffer.Add(pushEvent);
         }
         return pushEvent;
@@ -166,9 +166,9 @@ public class Channel : MonoBehaviour{
         return Leave(Timeout);
     }
     Push Leave(int timeout){
-        Action onClose = () =>  {
+        Action<string> onClose = (nop) =>  {
             Debug.Log("leave topic: "+Topic);
-            Trigger(CHANNEL_EVENTS.CLOSE, new PayloadResp{"leave"});
+            Trigger(CHANNEL_EVENTS.CLOSE,new PayloadResp("leave"));
         };
         Push leavePush = Push.getInstance(this,CHANNEL_EVENTS.LEAVE, new PayloadReq(),timeout);
         leavePush.Receive("ok", onClose)

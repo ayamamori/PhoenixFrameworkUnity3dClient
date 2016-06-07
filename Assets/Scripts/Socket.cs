@@ -173,12 +173,14 @@ public class Socket : MonoBehaviour{
         }
     }
 
-    private string MakeRef(){
-        int newRef = Ref+1;
-        if(newRef==int.MaxValue) {
-            Ref = 0;
-        } else {
-            Ref = newRef;
+    public string MakeRef(){
+        lock(this) {
+            int newRef = Ref + 1;
+            if (newRef == int.MaxValue) {
+                Ref = 0;
+            } else {
+                Ref = newRef;
+            }
         }
         return Ref.ToString();
     }
