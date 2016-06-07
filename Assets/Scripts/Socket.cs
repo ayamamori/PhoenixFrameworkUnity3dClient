@@ -19,14 +19,14 @@ public class Socket : MonoBehaviour{
     private List<Channel> Channels = new List<Channel>();
     private List<Action> SendBuffer = new List<Action>();
     private List<Action> OnOpenCallbacks;
-    private List<Action<string>> OnCloseCallbacks;
-    private List<Action<string>> OnErrorCallbacks;
-    private List<Action<string>> OnMessageCallbacks;
+    private List<Action<CloseEventArgs>> OnCloseCallbacks;
+    private List<Action<ErrorEventArgs>> OnErrorCallbacks;
+    private List<Action<MessageEventArgs>> OnMessageCallbacks;
     private int Ref = 0;
 
 
 
-    private int DEFAULT_TIMEOUT = 10000;//[ms]
+    private static int DEFAULT_TIMEOUT = 10000;//[ms]
 
     // Initializes the Socket
     //
@@ -59,16 +59,16 @@ public class Socket : MonoBehaviour{
 
     void Awake(){
         OnOpenCallbacks = new List<Action>();
-        OnCloseCallbacks = new List<Action<string>>();
-        OnErrorCallbacks = new List<Action<string>>();
-        OnMessageCallbacks = new List<Action<string>>();
+        OnCloseCallbacks = new List<Action<CloseEventArgs>>();
+        OnErrorCallbacks = new List<Action<ErrorEventArgs>>();
+        OnMessageCallbacks = new List<Action<MessageEventArgs>>();
     }
 
     void DisConnect(Action callback, ushort code = (ushort)CloseStatusCode.NoStatus, string reason=""){
         //Closing status code: https://triple-underscore.github.io/RFC6455-ja.html#section-7.4
         if(Conn !=null){
-            Conn.OnClose=null;
-            if(code!=null) {
+            Conn.OnClose -= OnConnClose;
+			if(code!=(ushort)CloseStatusCode.NoStatus) {
                 Conn.Close(code, reason);
             }else{
                 Conn.Close();
@@ -94,15 +94,15 @@ public class Socket : MonoBehaviour{
         OnOpenCallbacks.Add(callback);
         return this;
     }
-    Socket OnClose(Action<string> callback){
+    Socket OnClose(Action<CloseEventArgs> callback){
         OnCloseCallbacks.Add(callback);
         return this;
     }
-    Socket OnError(Action<string> callback){
+    Socket OnError(Action<ErrorEventArgs> callback){
         OnErrorCallbacks.Add(callback);
         return this;
     }
-    Socket OnMessage(Action<string> callback){
+    Socket OnMessage(Action<MessageEventArgs> callback){
         OnMessageCallbacks.Add(callback);
         return this;
     }
@@ -151,19 +151,20 @@ public class Socket : MonoBehaviour{
         return ConnectionState() == WebSocketState.Open;
     }
 
-    void Remove(Channel channel){
+    public void Remove(Channel channel){
         Channels = Channels.Where(c => !c.IsMember(channel.Topic)).ToList();
     }
 
-    private Channel CreateChannel(string topic, Payload payload){
+    private Channel CreateChannel(string topic, PayloadReq payload){
         Channel channel = Channel.getInstance(topic,this,payload);
         Channels.Add(channel);
         return channel;
     }
 
-    void Push(Message message){
-        Action callback = () => Conn.Send(JsonUtility.ToJson(message));
-        Debug.Log(message.ToJSONString());
+    public void Push(Message<PayloadReq> message){
+        var jsonMessage = JsonUtility.ToJson(message);
+        Action callback = () => Conn.Send(JsonUtility.ToJson(jsonMessage));
+        Debug.Log("Push message: "+jsonMessage);
         if(IsConnected()){
             callback();
         }else{
@@ -189,7 +190,7 @@ public class Socket : MonoBehaviour{
     }
 
     private void SendHeartbeat(){
-        Push(new Message("Phoenix","heartbeart",new Payload(),MakeRef()));
+        Push(new Message<PayloadReq>("Phoenix","heartbeart",new PayloadReq(""),MakeRef()));
     }
 
     private void FlushSendBuffer(){
@@ -201,7 +202,7 @@ public class Socket : MonoBehaviour{
 
 
     private void OnConnMessage(object sender, MessageEventArgs e){
-        Message msg = JsonUtility.FromJson<Message>(e.Data);
+        Message<PayloadResp> msg = JsonUtility.FromJson<Message<PayloadResp>>(e.Data);
         Debug.Log(msg);
         Channels.Where(c => c.IsMember(msg.Topic)).ToList().ForEach(c => c.Trigger(msg.Event, msg.Payload,msg.Ref));
 

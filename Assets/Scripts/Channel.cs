@@ -3,14 +3,15 @@ using System.Collections.Generic;
 using UnityEngine;
 
 public class Channel : MonoBehaviour{
+    public Socket Socket;
+    public string Topic;
+
     CHANNEL_STATES State;
-    string Topic;
-    Socket Socket;
-    Payload Payload;
+    PayloadReq PayloadReq;
     int Timeout;
     bool JoinedOnce;
     Push JoinPush;
-    Dictionary<CHANNEL_EVENTS,Action> Bindings = new Dictionary<CHANNEL_EVENTS,Action>();
+    Dictionary<string,Action> Bindings = new Dictionary<string,Action>();
     List<Push> PushBuffer = new List<Push>();
 
 
@@ -30,20 +31,24 @@ public class Channel : MonoBehaviour{
         public static string LEAVE = "phx_leave";
     }
 
-    static Channel getInstance(string _topic, Socket _socket, Payload _payload = new Payload()){
+    public static Channel getInstance(string _topic, Socket _socket){
+		return getInstance(_topic, _socket, new PayloadReq(""));
+	}
+
+    public static Channel getInstance(string _topic, Socket _socket, PayloadReq _payload){
         Channel channel = _socket.gameObject.AddComponent<Channel>();
         channel.Config(_topic,_socket,_payload);
         return channel;
 
     }
-    void Config (string _topic, Socket _socket, Payload _payload = new Payload()){
+    private void Config (string _topic, Socket _socket, PayloadReq _payload){
         State = CHANNEL_STATES.CLOSED;
         Topic = _topic;
         Socket = _socket;
-        Payload = _payload;
+        PayloadReq = _payload;
         Timeout = _socket.Timeout;
         JoinedOnce = false;
-        JoinPush = Push.getInstance(this,CHANNEL_EVENTS.JOIN,Payload,Timeout);
+        JoinPush = Push.getInstance(this,CHANNEL_EVENTS.JOIN, PayloadReq,Timeout);
         //TODO Rejoin Timer
 
         JoinPush.Receive("ok",() => {
@@ -87,7 +92,7 @@ public class Channel : MonoBehaviour{
         //TODO
     }
 
-    void OnReply(Action<Payload,string> callback){
+    void OnReply(Action<PayloadResp,string> callback){
         //On(CHANNEL_EVENTS.REPLY, callback);
         //TODO
     }
@@ -98,7 +103,7 @@ public class Channel : MonoBehaviour{
     }
     */
 
-    void Trigger(string _event, Payload _payload = null, int _ref = -1){
+    public void Trigger(string _event, Payload _payload = null, int _ref = -1){
         //TODO Method Stub
     }
 
@@ -110,6 +115,7 @@ public class Channel : MonoBehaviour{
 
     string ReplyEventName(string refResp){
         //TODO Method Stub
+		return "";
     }
 
 }
