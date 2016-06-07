@@ -103,7 +103,11 @@ public class Channel : MonoBehaviour{
     }
     */
 
-    public void Trigger(string _event, Payload _payload = null, int _ref = -1){
+    public void Trigger(string _event){
+        Trigger(_event, new PayloadResp());
+    }
+
+	public void Trigger(string _event, PayloadResp _payload,  string _ref = null){
         //TODO Method Stub
     }
 

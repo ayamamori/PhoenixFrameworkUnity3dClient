@@ -11,7 +11,7 @@ public class Push: MonoBehaviour {
     PayloadReq PayloadReq;
     PayloadResp PayloadResp = null;
     bool Sent = false;
-    int Ref;//TODO
+    string Ref;//TODO
 
     // Initializes the Push
     //

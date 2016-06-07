@@ -172,14 +172,14 @@ public class Socket : MonoBehaviour{
         }
     }
 
-    private int MakeRef(){
+    private string MakeRef(){
         int newRef = Ref+1;
         if(newRef==int.MaxValue) {
             Ref = 0;
         } else {
             Ref = newRef;
         }
-        return Ref;
+        return Ref.ToString();
     }
 
     private IEnumerator HeartbeatTimer(){
