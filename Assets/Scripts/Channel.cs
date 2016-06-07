@@ -83,9 +83,12 @@ public class Channel : MonoBehaviour{
     }
 
     IEnumerator RejoinLoopTimer() {
+        int reconnectNum =0;
         while (Socket.IsConnected()) {
             Rejoin(Timeout);
-            yield return new WaitForSeconds(Socket.ReconnectAfterMs / 1000.0f);
+            yield return new WaitForSeconds(Socket.ReconnectAfterMs[reconnectNum] / 1000.0f);
+            reconnectNum++;
+            if(reconnectNum>=Socket.ReconnectAfterMs.Length)reconnectNum--;
         }
 
     }

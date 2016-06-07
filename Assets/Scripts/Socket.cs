@@ -11,7 +11,7 @@ public class Socket : MonoBehaviour{
 
     public int Timeout = DEFAULT_TIMEOUT;
     public int HeartbeatIntervalMs = 30000;//[ms]
-    public int ReconnectAfterMs = 10000;// [ms] //TODO: set random number like: function(tries){return [1000, 2000, 5000, 10000][tries - 1]
+    public int[] ReconnectAfterMs = new int[] {1000, 2000, 5000, 10000};// [ms]
     public int LongPollerTimeout = 20000;
     public bool SkipHeartbeat = false;
 
