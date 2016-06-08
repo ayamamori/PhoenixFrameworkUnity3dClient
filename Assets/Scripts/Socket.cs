@@ -15,18 +15,19 @@ public class Socket : MonoBehaviour{
     public int LongPollerTimeout = 20000;//[ms]
     public bool SkipHeartbeat = false;
 
-    private WebSocket conn;
-    private List<Channel> channels = new List<Channel>();
-    private List<Action> sendBuffer = new List<Action>();
-    private List<Action> onOpenCallbacks;
-    private List<Action<CloseEventArgs>> onCloseCallbacks;
-    private List<Action<ErrorEventArgs>> onErrorCallbacks;
-    private List<Action<MessageEventArgs>> onMessageCallbacks;
-    private int socket_ref = 0;
-
-
-
     public static int DEFAULT_TIMEOUT = 10000;//[ms]
+
+    WebSocket conn;
+    List<Channel> channels = new List<Channel>();
+    List<Action> sendBuffer = new List<Action>();
+    List<Action> onOpenCallbacks;
+    List<Action<CloseEventArgs>> onCloseCallbacks;
+    List<Action<ErrorEventArgs>> onErrorCallbacks;
+    List<Action<MessageEventArgs>> onMessageCallbacks;
+    int socket_ref = 0;
+
+
+
 
     // Initializes the Socket
     //
@@ -91,19 +92,19 @@ public class Socket : MonoBehaviour{
         }
     }
 
-    Socket OnOpen(Action callback){
+    public Socket OnOpen(Action callback){
         onOpenCallbacks.Add(callback);
         return this;
     }
-    Socket OnClose(Action<CloseEventArgs> callback){
+    public Socket OnClose(Action<CloseEventArgs> callback){
         onCloseCallbacks.Add(callback);
         return this;
     }
-    Socket OnError(Action<ErrorEventArgs> callback){
+    public Socket OnError(Action<ErrorEventArgs> callback){
         onErrorCallbacks.Add(callback);
         return this;
     }
-    Socket OnMessage(Action<MessageEventArgs> callback){
+    public Socket OnMessage(Action<MessageEventArgs> callback){
         onMessageCallbacks.Add(callback);
         return this;
     }
@@ -210,18 +211,18 @@ public class Socket : MonoBehaviour{
         return socket_ref.ToString();
     }
 
-    private IEnumerator HeartbeatLoopTimer(){
+    IEnumerator HeartbeatLoopTimer(){
         while(IsConnected()) {
             yield return new WaitForSeconds((float)HeartbeatIntervalMs / 1000.0f);
             SendHeartbeat();
         }
     }
 
-    private void SendHeartbeat(){
+    void SendHeartbeat(){
         Push(new Message<PayloadReq>("phoenix","heartbeat",new PayloadReq(""),MakeRef()));
     }
 
-    private void FlushSendBuffer(){
+    void FlushSendBuffer(){
         if(IsConnected()&& sendBuffer.Count>0){
             sendBuffer.ForEach(callback => callback());
             sendBuffer = new List<Action>();
@@ -232,6 +233,7 @@ public class Socket : MonoBehaviour{
     void OnConnMessage(object sender, MessageEventArgs e){
         Debug.Log("Received message: " +e.Data);
         Message<PayloadResp> msg = JsonUtility.FromJson<Message<PayloadResp>>(e.Data);
+        //FIXME: System response (PayloadResp) and application response should be divided.
         Debug.Log("Parsed message: " +msg);
         channels.Where(c => c.IsMember(msg.topic)).ToList().ForEach(c => c.Trigger(msg.@event, msg.payload,msg.@ref));
 

@@ -43,8 +43,9 @@ public class Channel : MonoBehaviour{
         return channel;
 
     }
-    private void Config (string _topic, Socket _socket, PayloadReq _payload){
+    void Config (string _topic, Socket _socket, PayloadReq _payload){
         state = CHANNEL_STATES.CLOSED;
+
         Topic = _topic;
         Socket = _socket;
         payloadReq = _payload;
@@ -82,7 +83,6 @@ public class Channel : MonoBehaviour{
 
     bool startRejoinTimer = false;
     int reconnectNum =0;
-
     void Update(){
         if(startRejoinTimer){
             startRejoinTimer = false;
@@ -120,14 +120,14 @@ public class Channel : MonoBehaviour{
     }
 
 
-    Channel OnClose(Action<PayloadResp,string> callback){
+    public Channel OnClose(Action<PayloadResp,string> callback){
         return On(CHANNEL_EVENTS.CLOSE,callback);
     }
-    Channel OnError(Action<PayloadResp,string> callback){
+    public Channel OnError(Action<PayloadResp,string> callback){
         return On(CHANNEL_EVENTS.ERROR, callback);
     }
 
-    Channel OnReply(Action<PayloadResp,string> callback){
+    public Channel OnReply(Action<PayloadResp,string> callback){
         return On(CHANNEL_EVENTS.REPLY, callback);
     }
     public Channel On(string _event, Action<PayloadResp,string> callback){
@@ -192,7 +192,7 @@ public class Channel : MonoBehaviour{
         return leavePush;
     }
 
-    void OnMessage(string _event, PayloadResp payloadResp, string _ref){ }
+    public virtual void OnMessage(string _event, PayloadResp payloadResp, string _ref){ }
 
     public bool IsMember(string topic) {
         return this.Topic == topic;
