@@ -61,7 +61,7 @@ public class Channel : MonoBehaviour{
             if(state !=CHANNEL_STATES.JOINING) return;
             Debug.Log("Timeout on topic: "+Topic+" "+ joinPush.Timeout);
             state = CHANNEL_STATES.ERRORED;
-            StartCoroutine(RejoinLoopTimer());//FIXME
+            startRejoinTimer = true;
         });
 
         OnClose((payloadResp, refResp) => {
@@ -73,24 +73,31 @@ public class Channel : MonoBehaviour{
         OnError((payloadResp, refResp) => {
             Debug.Log("Error on topic: "+Topic+ " reason: "+payloadResp.status);
             state = CHANNEL_STATES.ERRORED;
-            StartCoroutine(RejoinLoopTimer());//FIXME
+            startRejoinTimer = true;
         });
         OnReply((payloadResp, refResp) => {
             Trigger(ReplyEventName(refResp),payloadResp);
         });
-
-
     }
 
-    IEnumerator RejoinLoopTimer() {
-        int reconnectNum =0;
-        while (Socket.IsConnected()) {
-            Rejoin(timeout);
-            yield return new WaitForSeconds(Socket.ReconnectAfterMs[reconnectNum] / 1000.0f);
-            reconnectNum++;
-            if(reconnectNum>=Socket.ReconnectAfterMs.Length)reconnectNum--;
-        }
+    bool startRejoinTimer = false;
+    int reconnectNum =0;
 
+    void Update(){
+        if(startRejoinTimer){
+            startRejoinTimer = false;
+            StartCoroutine(RejoinTimer());
+        }
+    }
+
+    IEnumerator RejoinTimer() {
+        if (!Socket.IsConnected()) yield break;
+
+        yield return new WaitForSeconds((float)Socket.ReconnectAfterMs[reconnectNum] / 1000.0f);
+        reconnectNum++;
+        if(reconnectNum>=Socket.ReconnectAfterMs.Length)reconnectNum=Socket.ReconnectAfterMs.Length-1;
+
+        Rejoin(timeout);
     }
 
 	public Push Join (){
@@ -205,5 +212,7 @@ public class Channel : MonoBehaviour{
     public string ReplyEventName(string refResp){
 		return "chan_reply_"+refResp;
     }
+
+
 
 }

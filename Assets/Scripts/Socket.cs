@@ -24,7 +24,6 @@ public class Socket : MonoBehaviour{
     private List<Action<MessageEventArgs>> onMessageCallbacks;
     private int socket_ref = 0;
 
-    private int reconnectCount;
 
 
     public static int DEFAULT_TIMEOUT = 10000;//[ms]
@@ -113,7 +112,8 @@ public class Socket : MonoBehaviour{
     {
         Debug.Log("Connected to "+EndPoint);
         FlushSendBuffer();
-        reconnectCount =0;
+        reconnectNum =0;
+        startReconnectTimer = false;
         if(!SkipHeartbeat){
             StartCoroutine(HeartbeatLoopTimer());
         }
@@ -123,9 +123,9 @@ public class Socket : MonoBehaviour{
     }
 
     void OnConnClose(object sender, CloseEventArgs e){
-        Debug.Log("Connection closed");
+        Debug.Log("Connection closed. code: "+e.Code+" reason: "+e.Reason);
         TriggerChanError();
-        StartCoroutine(DisConnectTimer(Connect,e.Code));//Reconnect
+        startReconnectTimer = true;
         foreach (var callback in onCloseCallbacks) {
             callback(e);
         }
@@ -139,13 +139,23 @@ public class Socket : MonoBehaviour{
         }
     }
 
-    IEnumerator DisConnectTimer(Action callback, ushort code){
-        yield return new WaitForSeconds(ReconnectAfterMs[reconnectCount]/1000.0f);
-        reconnectCount++;
-        if(reconnectCount >=ReconnectAfterMs.Length) reconnectCount--;
+    int reconnectNum =0;
+    bool startReconnectTimer = false;
+    void Update(){
+        if(startReconnectTimer){
+            startReconnectTimer=false;
+            StartCoroutine(ReconnectTimer());
+        }
+    }
+
+    IEnumerator ReconnectTimer(){
+        yield return new WaitForSeconds(ReconnectAfterMs[reconnectNum] / 1000.0f);
+
+        reconnectNum++;
+        if(reconnectNum>=ReconnectAfterMs.Length) reconnectNum=ReconnectAfterMs.Length-1;
 
         Debug.Log("Connection retry");
-        DisConnect(callback,code);
+        DisConnect(Connect,(ushort)CloseStatusCode.NoStatus);
     }
 
     void TriggerChanError(){
@@ -181,6 +191,7 @@ public class Socket : MonoBehaviour{
     }
 
     public void Push(Message<PayloadReq> message){
+        Debug.Log("Pushing message: "+message);
         var jsonMessage = JsonUtility.ToJson(message);
         Action callback = () => conn.Send(jsonMessage);
         if(IsConnected()){
@@ -210,7 +221,7 @@ public class Socket : MonoBehaviour{
     }
 
     private void SendHeartbeat(){
-        Push(new Message<PayloadReq>("Phoenix","heartbeart",new PayloadReq(""),MakeRef()));
+        Push(new Message<PayloadReq>("phoenix","heartbeart",new PayloadReq(""),MakeRef()));
     }
 
     private void FlushSendBuffer(){
@@ -223,6 +234,7 @@ public class Socket : MonoBehaviour{
 
     void OnConnMessage(object sender, MessageEventArgs e){
         Message<PayloadResp> msg = JsonUtility.FromJson<Message<PayloadResp>>(e.Data);
+        Debug.Log("Received message: " +msg);
         channels.Where(c => c.IsMember(msg.topic)).ToList().ForEach(c => c.Trigger(msg.@event, msg.payload,msg.@ref));
 
         foreach (var callback in onMessageCallbacks) {

@@ -18,6 +18,8 @@ public class Push: MonoBehaviour {
     PayloadResp receivedResp;
     Dictionary<string,Action<string>> recHooks = new Dictionary<string, Action<string>>();
 
+    bool waitingResponse = false;
+
     // Initializes the Push
     //
     // channel - The Channel
@@ -69,18 +71,22 @@ public class Push: MonoBehaviour {
     }
 
     public void SetResponseListener(){
+        waitingResponse = true;
         push_ref = channel.Socket.MakeRef();
         refEvent = channel.ReplyEventName(push_ref);
         channel.On(refEvent, (payloadResp,refResp) => {
             CancelRefEvent();
-            StopCoroutine(StartTimeout());//FIXME
+            waitingResponse = false;
             receivedResp = payloadResp;
             MatchReceive(payloadResp);
         });
     }
     IEnumerator StartTimeout(){
         yield return new WaitForSeconds(Timeout/1000.0f);
-        Trigger("timeout", new PayloadResp());
+        if(waitingResponse) {
+            waitingResponse = false;
+            Trigger("timeout", new PayloadResp());
+        }
     }
 
     bool HasReceived(string _status){

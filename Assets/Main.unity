@@ -94,6 +94,7 @@ GameObject:
   m_Component:
   - 4: {fileID: 557465560}
   - 114: {fileID: 557465561}
+  - 114: {fileID: 557465562}
   m_Layer: 0
   m_Name: Script
   m_TagString: Untagged
@@ -129,7 +130,18 @@ MonoBehaviour:
   HeartbeatIntervalMs: 30000
   ReconnectAfterMs: e8030000d00700008813000010270000
   LongPollerTimeout: 20000
-  SkipHeartbeat: 1
+  SkipHeartbeat: 0
+--- !u!114 &557465562
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 557465559}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7df07d4f9f3e949c1aa13172b03148f4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &924291663
 GameObject:
   m_ObjectHideFlags: 0

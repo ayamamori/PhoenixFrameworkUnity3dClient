@@ -1,5 +1,5 @@
 using System;
-using UnityEngine;
+using System.Text;
 
 [Serializable]
 public class Message<PL> where PL :Payload {
@@ -13,6 +13,17 @@ public class Message<PL> where PL :Payload {
         @event = _event;
         payload = _payload;
         @ref = _ref;
+    }
+
+    public override string ToString(){
+        StringBuilder sb = new StringBuilder();
+        sb.Append("{");
+        sb.Append("topic: " + topic+",");
+        sb.Append("event: " + @event+",");
+        sb.Append("payload: " + payload+",");
+        sb.Append("ref: " + @ref);
+        sb.Append("}");
+		return sb.ToString ();
     }
 
 }

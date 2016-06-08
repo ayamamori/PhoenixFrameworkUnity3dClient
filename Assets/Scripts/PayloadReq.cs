@@ -7,4 +7,8 @@ public class PayloadReq : Payload{
     public PayloadReq(string _content=""){
         content = _content;
     }
+
+    public override string ToString(){
+        return "{content: "+content+"}";
+    }
 }
