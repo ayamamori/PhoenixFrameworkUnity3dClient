@@ -8,13 +8,13 @@ public class Channel : MonoBehaviour{
     public Socket Socket;
     public string Topic;
 
-    CHANNEL_STATES State;
-    PayloadReq PayloadReq;
-    int Timeout;//[ms]
-    bool JoinedOnce;
-    Push JoinPush;
-    Dictionary<string,Action<PayloadResp,string>> Bindings = new Dictionary<string, Action<PayloadResp, string>>();
-    List<Push> PushBuffer = new List<Push>();
+    CHANNEL_STATES state;
+    PayloadReq payloadReq;
+    int timeout;//[ms]
+    bool joinedOnce;
+    Push joinPush;
+    Dictionary<string,Action<PayloadResp,string>> bindings = new Dictionary<string, Action<PayloadResp, string>>();
+    List<Push> pushBuffer = new List<Push>();
 
 
 
@@ -44,35 +44,35 @@ public class Channel : MonoBehaviour{
 
     }
     private void Config (string _topic, Socket _socket, PayloadReq _payload){
-        State = CHANNEL_STATES.CLOSED;
+        state = CHANNEL_STATES.CLOSED;
         Topic = _topic;
         Socket = _socket;
-        PayloadReq = _payload;
-        Timeout = _socket.Timeout;
-        JoinedOnce = false;
-        JoinPush = Push.GetInstance(this, CHANNEL_EVENTS.JOIN, PayloadReq, Timeout);
+        payloadReq = _payload;
+        timeout = _socket.Timeout;
+        joinedOnce = false;
+        joinPush = Push.GetInstance(this, CHANNEL_EVENTS.JOIN, payloadReq, timeout);
 
-        JoinPush.Receive("ok",(nop) => {
-            State = CHANNEL_STATES.JOINED;
-            PushBuffer.ForEach(events => events.Send());
+        joinPush.Receive("ok",(nop) => {
+            state = CHANNEL_STATES.JOINED;
+            pushBuffer.ForEach(events => events.Send());
         });
 
-        JoinPush.Receive("timeout",(nop) => {
-            if(State!=CHANNEL_STATES.JOINING) return;
-            Debug.Log("Timeout on topic: "+Topic+" "+JoinPush.Timeout);
-            State = CHANNEL_STATES.ERRORED;
+        joinPush.Receive("timeout",(nop) => {
+            if(state !=CHANNEL_STATES.JOINING) return;
+            Debug.Log("Timeout on topic: "+Topic+" "+ joinPush.Timeout);
+            state = CHANNEL_STATES.ERRORED;
             StartCoroutine(RejoinLoopTimer());
         });
 
         OnClose((payloadResp, refResp) => {
             Debug.Log("Close channel: "+Topic);
-            State = CHANNEL_STATES.CLOSED;
+            state = CHANNEL_STATES.CLOSED;
             Socket.Remove(this);
         });
 
         OnError((reason, refResp) => {
             Debug.Log("Error on topic: "+Topic+ " reason: "+reason);
-            State = CHANNEL_STATES.ERRORED;
+            state = CHANNEL_STATES.ERRORED;
             StartCoroutine(RejoinLoopTimer());
         });
         OnReply((payloadResp, refResp) => {
@@ -85,7 +85,7 @@ public class Channel : MonoBehaviour{
     IEnumerator RejoinLoopTimer() {
         int reconnectNum =0;
         while (Socket.IsConnected()) {
-            Rejoin(Timeout);
+            Rejoin(timeout);
             yield return new WaitForSeconds(Socket.ReconnectAfterMs[reconnectNum] / 1000.0f);
             reconnectNum++;
             if(reconnectNum>=Socket.ReconnectAfterMs.Length)reconnectNum--;
@@ -94,22 +94,22 @@ public class Channel : MonoBehaviour{
     }
 
 	public Push Join (){
-		return Join (Timeout);
+		return Join (timeout);
 	}
 
 	public Push Join (int timeout){
-        if(JoinedOnce){
+        if(joinedOnce){
             throw new InvalidOperationException("tried to join multiple times. 'join' can only be called a single time per channel instance");
         }else{
-            JoinedOnce = true;
+            joinedOnce = true;
         }
         Rejoin(timeout);
-        return JoinPush;
+        return joinPush;
     }
 
     void Rejoin(int timeout){
-        State = CHANNEL_STATES.JOINING;
-        JoinPush.Resend(timeout);
+        state = CHANNEL_STATES.JOINING;
+        joinPush.Resend(timeout);
     }
 
 
@@ -124,23 +124,23 @@ public class Channel : MonoBehaviour{
         On(CHANNEL_EVENTS.REPLY, callback);
     }
     public void On(string _event, Action<PayloadResp,string> callback){
-        Bindings.Add(_event,callback);
+        bindings.Add(_event,callback);
     }
 
     public void Off(string _event){
-        Bindings = Bindings.Where(kvp => !kvp.Key.Equals(_event)).ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+        bindings = bindings.Where(kvp => !kvp.Key.Equals(_event)).ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
     }
 
     bool CanPush(){
-		return Socket.IsConnected() && State == CHANNEL_STATES.JOINED;
+        return Socket.IsConnected() && state == CHANNEL_STATES.JOINED;
     }
 
     Push PushEvent(string _event, PayloadReq _payloadReq){
-        return PushEvent(_event, _payloadReq, Timeout);
+        return PushEvent(_event, _payloadReq, timeout);
     }
 
     Push PushEvent(string _event, PayloadReq _payloadReq, int timeout){
-        if(!JoinedOnce){
+        if(!joinedOnce){
             throw new InvalidOperationException("tried to push '"+_event+"' to '"+Topic+"' before joining. Use Channel.Join() before pushing events");
         }
         Push pushEvent = Push.GetInstance(this, _event, _payloadReq, timeout);
@@ -148,7 +148,7 @@ public class Channel : MonoBehaviour{
             pushEvent.Send();
         }else{
             pushEvent.SetResponseListener();
-            PushBuffer.Add(pushEvent);
+            pushBuffer.Add(pushEvent);
         }
         return pushEvent;
     }
@@ -166,7 +166,7 @@ public class Channel : MonoBehaviour{
     //     channel.leave().receive("ok", () => alert("left!") )
     //
     Push Leave(){
-        return Leave(Timeout);
+        return Leave(timeout);
     }
     Push Leave(int timeout){
         Action<string> onClose = (nop) =>  {
@@ -195,7 +195,7 @@ public class Channel : MonoBehaviour{
 
 	public void Trigger(string _event, PayloadResp _payload,  string _ref = null){
         OnMessage(_event,_payload, _ref);
-        Bindings.Where(kvp => kvp.Key.Equals(_event))
+        bindings.Where(kvp => kvp.Key.Equals(_event))
                 .Select(kvp => kvp.Value)
                 .ToList()
                 .ForEach(bind => bind.Invoke(_payload,_ref));

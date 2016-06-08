@@ -8,17 +8,17 @@ public class Push: MonoBehaviour {
 
     public int Timeout;//[ms]
 
-    Channel Channel;
-    string Event;
-    PayloadReq PayloadReq;
-    PayloadResp PayloadResp = null;
-    bool Sent = false;
-    string Ref;//TODO
-    string RefEvent; //TODO
-    PayloadResp ReceivedResp;//TODO
-    Dictionary<string,Action<string>> RecHooks = new Dictionary<string, Action<string>>();
+    Channel channel;
+    string eventName;
+    PayloadReq payloadReq;
+    PayloadResp payloadResp = null;
+    bool sent = false;
+    string push_ref;
+    string refEvent;
+    PayloadResp receivedResp;
+    Dictionary<string,Action<string>> recHooks = new Dictionary<string, Action<string>>();
 
-    bool WaitingResponse;
+    bool waitingResponse = false;
 
     // Initializes the Push
     //
@@ -29,72 +29,72 @@ public class Push: MonoBehaviour {
     //
     public static Push GetInstance(Channel _channel, string _event, PayloadReq _payload, int _timeout){
         Push push = _channel.gameObject.AddComponent<Push>();
-        push.Channel = _channel;
-        push.Event = _event;
-        push.PayloadReq = _payload;
+        push.channel = _channel;
+        push.eventName = _event;
+        push.payloadReq = _payload;
         push.Timeout = _timeout;
         return push;
     }
     public void Resend(int _timeout){
         this.Timeout = _timeout;
         CancelRefEvent();
-        Sent = false;
+        sent = false;
         Send();
     }
     public void Send(){
         if(HasReceived("timeout"))
             return;
         SetResponseListener();
-        Sent = true;
-        Channel.Socket.Push(new Message<PayloadReq>(Channel.Topic, Event, PayloadReq, Ref));
+        sent = true;
+        channel.Socket.Push(new Message<PayloadReq>(channel.Topic, eventName, payloadReq, push_ref));
         StartCoroutine(StartTimeout());
     }
 
     public Push Receive(string status,Action<string> callback){
         if(HasReceived(status)){
-            callback(ReceivedResp.Response);
+            callback(receivedResp.Response);
         }
-        RecHooks.Add(status,callback);
+        recHooks.Add(status,callback);
         return this;
     }
 
     void MatchReceive(PayloadResp msg){
-        RecHooks.Where(kvp => kvp.Key.Equals(msg.Status))
+        recHooks.Where(kvp => kvp.Key.Equals(msg.Status))
                 .Select(kvp => kvp.Value)
                 .ToList()
                 .ForEach(callback => callback(msg.Response));
     }
 
     void CancelRefEvent(){
-        if(RefEvent==null) return;
-        Channel.Off(RefEvent);
+        if(refEvent ==null) return;
+        channel.Off(refEvent);
     }
 
     public void SetResponseListener(){
-        WaitingResponse = true;
-        Ref = Channel.Socket.MakeRef();
-        RefEvent = Channel.ReplyEventName(Ref);
-        Channel.On(RefEvent, (payloadResp,refResp) => {
+        waitingResponse = true;
+        push_ref = channel.Socket.MakeRef();
+        refEvent = channel.ReplyEventName(push_ref);
+        channel.On(refEvent, (payloadResp,refResp) => {
             CancelRefEvent();
-            WaitingResponse = false;
-            ReceivedResp = payloadResp;
+            waitingResponse = false;
+            receivedResp = payloadResp;
             MatchReceive(payloadResp);
         });
     }
     IEnumerator StartTimeout(){
         yield return new WaitForSeconds(Timeout/1000.0f);
-        if(WaitingResponse) {
+        if(waitingResponse) {
             Trigger("timeout", new PayloadResp());
         }
     }
 
     bool HasReceived(string _status){
-        return PayloadResp !=null && PayloadResp.Status == _status;
+        return payloadResp !=null && payloadResp.Status == _status;
     }
 
     public void Trigger(string _status, PayloadResp payloadResp) {
         payloadResp.Status = _status;
-        Channel.Trigger(RefEvent,payloadResp);
+        channel.Trigger(refEvent,payloadResp);
     }
 
 }

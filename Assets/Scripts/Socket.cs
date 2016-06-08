@@ -15,16 +15,16 @@ public class Socket : MonoBehaviour{
     public int LongPollerTimeout = 20000;//[ms]
     public bool SkipHeartbeat = false;
 
-    private WebSocket Conn;
-    private List<Channel> Channels = new List<Channel>();
-    private List<Action> SendBuffer = new List<Action>();
-    private List<Action> OnOpenCallbacks;
-    private List<Action<CloseEventArgs>> OnCloseCallbacks;
-    private List<Action<ErrorEventArgs>> OnErrorCallbacks;
-    private List<Action<MessageEventArgs>> OnMessageCallbacks;
-    private int Ref = 0;
+    private WebSocket conn;
+    private List<Channel> channels = new List<Channel>();
+    private List<Action> sendBuffer = new List<Action>();
+    private List<Action> onOpenCallbacks;
+    private List<Action<CloseEventArgs>> onCloseCallbacks;
+    private List<Action<ErrorEventArgs>> onErrorCallbacks;
+    private List<Action<MessageEventArgs>> onMessageCallbacks;
+    private int socket_ref = 0;
 
-    private int ReconnectCount;
+    private int reconnectCount;
 
 
     public static int DEFAULT_TIMEOUT = 10000;//[ms]
@@ -59,104 +59,104 @@ public class Socket : MonoBehaviour{
     //
 
     void Awake(){
-        OnOpenCallbacks = new List<Action>();
-        OnCloseCallbacks = new List<Action<CloseEventArgs>>();
-        OnErrorCallbacks = new List<Action<ErrorEventArgs>>();
-        OnMessageCallbacks = new List<Action<MessageEventArgs>>();
+        onOpenCallbacks = new List<Action>();
+        onCloseCallbacks = new List<Action<CloseEventArgs>>();
+        onErrorCallbacks = new List<Action<ErrorEventArgs>>();
+        onMessageCallbacks = new List<Action<MessageEventArgs>>();
     }
 
     public void DisConnect(Action callback, ushort code = (ushort)CloseStatusCode.NoStatus, string reason=""){
         //Closing status code: https://triple-underscore.github.io/RFC6455-ja.html#section-7.4
-        if(Conn !=null){
-            Conn.OnClose -= OnConnClose;
+        if(conn !=null){
+            conn.OnClose -= OnConnClose;
 			if(code!=(ushort)CloseStatusCode.NoStatus) {
-                Conn.Close(code, reason);
+                conn.Close(code, reason);
             }else{
-                Conn.Close();
+                conn.Close();
             }
-            Conn = null;
+            conn = null;
         }
         if(callback!=null)callback();
     }
 
     public void Connect() {
         lock(this) {
-            if (Conn != null) return;
-            Conn = new WebSocket(EndPoint);
-            Conn.WaitTime = TimeSpan.FromSeconds(10);
-            Conn.OnOpen += OnConnOpen;
-            Conn.OnClose += OnConnClose;
-            Conn.OnError += OnConnError;
-            Conn.OnMessage += OnConnMessage;
-            Conn.Connect();
+            if (conn != null) return;
+            conn = new WebSocket(EndPoint);
+            conn.WaitTime = TimeSpan.FromSeconds(10);
+            conn.OnOpen += OnConnOpen;
+            conn.OnClose += OnConnClose;
+            conn.OnError += OnConnError;
+            conn.OnMessage += OnConnMessage;
+            conn.Connect();
         }
     }
 
     Socket OnOpen(Action callback){
-        OnOpenCallbacks.Add(callback);
+        onOpenCallbacks.Add(callback);
         return this;
     }
     Socket OnClose(Action<CloseEventArgs> callback){
-        OnCloseCallbacks.Add(callback);
+        onCloseCallbacks.Add(callback);
         return this;
     }
     Socket OnError(Action<ErrorEventArgs> callback){
-        OnErrorCallbacks.Add(callback);
+        onErrorCallbacks.Add(callback);
         return this;
     }
     Socket OnMessage(Action<MessageEventArgs> callback){
-        OnMessageCallbacks.Add(callback);
+        onMessageCallbacks.Add(callback);
         return this;
     }
 
     void OnConnOpen(object sender, EventArgs e)
     {
         Debug.Log("Connected to "+EndPoint);
-        //FlushSendBuffer();
-        ReconnectCount=0;
+        FlushSendBuffer();
+        reconnectCount =0;
         if(!SkipHeartbeat){
-            //StartCoroutine(HeartbeatLoopTimer());
+            StartCoroutine(HeartbeatLoopTimer());
         }
-        foreach (var callback in OnOpenCallbacks) {
+        foreach (var callback in onOpenCallbacks) {
             callback();
         }
     }
 
     void OnConnClose(object sender, CloseEventArgs e){
         Debug.Log("Connection closed");
-        //TriggerChanError();
+        TriggerChanError();
         StartCoroutine(DisConnectTimer(Connect,e.Code));//Reconnect
-        foreach (var callback in OnCloseCallbacks) {
+        foreach (var callback in onCloseCallbacks) {
             callback(e);
         }
     }
 
     void OnConnError(object sender, ErrorEventArgs e){
         Debug.Log("Connection error: "+e.Message);
-        //TriggerChanError();
-        foreach (var callback in OnErrorCallbacks) {
+        TriggerChanError();
+        foreach (var callback in onErrorCallbacks) {
             callback(e);
         }
     }
 
     IEnumerator DisConnectTimer(Action callback, ushort code){
-        yield return new WaitForSeconds(ReconnectAfterMs[ReconnectCount]/1000.0f);
-        ReconnectCount++;
-        if(ReconnectCount>=ReconnectAfterMs.Length) ReconnectCount--;
+        yield return new WaitForSeconds(ReconnectAfterMs[reconnectCount]/1000.0f);
+        reconnectCount++;
+        if(reconnectCount >=ReconnectAfterMs.Length) reconnectCount--;
 
         Debug.Log("Connection retry");
         DisConnect(callback,code);
     }
 
     void TriggerChanError(){
-        foreach (var chan in Channels){
+        foreach (var chan in channels){
             chan.Trigger(Channel.CHANNEL_EVENTS.ERROR);
         }
     }
 
     WebSocketState ConnectionState(){
-        if(Conn == null) return WebSocketState.Closed;
-        return Conn.ReadyState;
+        if(conn == null) return WebSocketState.Closed;
+        return conn.ReadyState;
     }
 
     public bool IsConnected(){
@@ -164,7 +164,7 @@ public class Socket : MonoBehaviour{
     }
 
     public void Remove(Channel channel){
-        Channels = Channels.Where(c => !c.IsMember(channel.Topic)).ToList();
+        channels = channels.Where(c => !c.IsMember(channel.Topic)).ToList();
     }
 
     public void CreateChannel(){
@@ -176,31 +176,31 @@ public class Socket : MonoBehaviour{
 
     public Channel CreateChannel(string topic, PayloadReq payload){
         Channel channel = Channel.GetInstance(topic,this,payload);
-        Channels.Add(channel);
+        channels.Add(channel);
         return channel;
     }
 
     public void Push(Message<PayloadReq> message){
         var jsonMessage = JsonUtility.ToJson(message);//FIXME: DOESN'T WORK
-        Action callback = () => Conn.Send(JsonUtility.ToJson(jsonMessage));
+        Action callback = () => conn.Send(JsonUtility.ToJson(jsonMessage));
         Debug.Log("Push message: "+jsonMessage);
         if(IsConnected()){
             callback();
         }else{
-            SendBuffer.Add(callback);
+            sendBuffer.Add(callback);
         }
     }
 
     public string MakeRef(){
         lock(this) {
-            int newRef = Ref + 1;
+            int newRef = socket_ref + 1;
             if (newRef == int.MaxValue) {
-                Ref = 0;
+                socket_ref = 0;
             } else {
-                Ref = newRef;
+                socket_ref = newRef;
             }
         }
-        return Ref.ToString();
+        return socket_ref.ToString();
     }
 
     private IEnumerator HeartbeatLoopTimer(){
@@ -215,9 +215,9 @@ public class Socket : MonoBehaviour{
     }
 
     private void FlushSendBuffer(){
-        if(IsConnected()&& SendBuffer.Count>0){
-            SendBuffer.ForEach(callback => callback());
-            SendBuffer = new List<Action>();
+        if(IsConnected()&& sendBuffer.Count>0){
+            sendBuffer.ForEach(callback => callback());
+            sendBuffer = new List<Action>();
         }
     }
 
@@ -225,9 +225,9 @@ public class Socket : MonoBehaviour{
     private void OnConnMessage(object sender, MessageEventArgs e){
         Message<PayloadResp> msg = JsonUtility.FromJson<Message<PayloadResp>>(e.Data);//FIXME: MIGHT NOT WORK
         Debug.Log(msg);
-        Channels.Where(c => c.IsMember(msg.Topic)).ToList().ForEach(c => c.Trigger(msg.Event, msg.Payload,msg.Ref));
+        channels.Where(c => c.IsMember(msg.Topic)).ToList().ForEach(c => c.Trigger(msg.Event, msg.Payload,msg.Ref));
 
-        foreach (var callback in OnMessageCallbacks) {
+        foreach (var callback in onMessageCallbacks) {
             callback(e);
         }
     }
