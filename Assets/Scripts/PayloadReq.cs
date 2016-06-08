@@ -2,13 +2,13 @@ using System;
 
 [Serializable]
 public class PayloadReq : Payload{
-    public string content;
+    public string body;
 
-    public PayloadReq(string _content=""){
-        content = _content;
+    public PayloadReq(string _body =""){
+        body = _body;
     }
 
     public override string ToString(){
-        return "{content: "+content+"}";
+        return "{body: "+ body +"}";
     }
 }

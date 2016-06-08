@@ -177,9 +177,6 @@ public class Socket : MonoBehaviour{
         channels = channels.Where(c => !c.IsMember(channel.Topic)).ToList();
     }
 
-    public void CreateChannel(){
-        CreateChannel("rooms:lobby").Join();
-    }
     public Channel CreateChannel(string topic) {
         return CreateChannel(topic, new PayloadReq());
     }

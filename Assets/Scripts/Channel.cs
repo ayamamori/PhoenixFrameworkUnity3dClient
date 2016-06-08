@@ -120,29 +120,31 @@ public class Channel : MonoBehaviour{
     }
 
 
-    void OnClose(Action<PayloadResp,string> callback){
-        On(CHANNEL_EVENTS.CLOSE,callback);
+    Channel OnClose(Action<PayloadResp,string> callback){
+        return On(CHANNEL_EVENTS.CLOSE,callback);
     }
-    void OnError(Action<PayloadResp,string> callback){
-        On(CHANNEL_EVENTS.ERROR, callback);
+    Channel OnError(Action<PayloadResp,string> callback){
+        return On(CHANNEL_EVENTS.ERROR, callback);
     }
 
-    void OnReply(Action<PayloadResp,string> callback){
-        On(CHANNEL_EVENTS.REPLY, callback);
+    Channel OnReply(Action<PayloadResp,string> callback){
+        return On(CHANNEL_EVENTS.REPLY, callback);
     }
-    public void On(string _event, Action<PayloadResp,string> callback){
+    public Channel On(string _event, Action<PayloadResp,string> callback){
         bindings.Add(_event,callback);
+        return this;
     }
 
-    public void Off(string _event){
+    public Channel Off(string _event){
         bindings = bindings.Where(kvp => !kvp.Key.Equals(_event)).ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+        return this;
     }
 
-    bool CanPush(){
+    public bool CanPush(){
         return Socket.IsConnected() && state == CHANNEL_STATES.JOINED;
     }
 
-    Push PushEvent(string _event, PayloadReq _payloadReq){
+    public Push PushEvent(string _event, PayloadReq _payloadReq){
         return PushEvent(_event, _payloadReq, timeout);
     }
 
