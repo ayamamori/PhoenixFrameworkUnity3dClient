@@ -174,10 +174,10 @@ public class Channel : MonoBehaviour{
     //
     //     channel.leave().receive("ok", () => alert("left!") )
     //
-    Push Leave(){
+    public Push Leave(){
         return Leave(timeout);
     }
-    Push Leave(int timeout){
+    public Push Leave(int timeout){
         Action<Response> onClose = (nop) =>  {
             Debug.Log("leave topic: "+Topic);
             Trigger(CHANNEL_EVENTS.CLOSE,new PayloadResp("leave"));
@@ -195,7 +195,7 @@ public class Channel : MonoBehaviour{
     public virtual void OnMessage(string _event, PayloadResp payloadResp, string _ref){ }
 
     public bool IsMember(string topic) {
-        return this.Topic == topic;
+        return this.Topic.Equals(topic);
     }
 
     public void Trigger(string _event){

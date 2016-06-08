@@ -35,6 +35,19 @@ public class ButtonHandler : MonoBehaviour {
         chatDisplayString = payloadResp.body +"\n"+ chatDisplayString;
     }
 
+    public void OnChannelLeaveButton(){
+        if(!Socket.IsConnected()) {
+            Debug.Log("Connection not yet established");
+            return;
+        }
+        if(channel==null||!channel.CanPush()){
+            Debug.Log("Channel not yet joined");
+            return;
+        }
+        channel.Leave();
+
+    }
+
     public void OnChatSendButton(){
         if(!Socket.IsConnected()) {
             Debug.Log("Connection not yet established");
@@ -42,6 +55,7 @@ public class ButtonHandler : MonoBehaviour {
         }
         if(channel==null||!channel.CanPush()){
             Debug.Log("Channel not yet joined");
+            return;
         }
         string msg = ChatMessageToSend.text;
         channel.PushEvent("new_msg",new PayloadReq(msg));
