@@ -215,7 +215,7 @@ public class Socket : MonoBehaviour{
 
     private IEnumerator HeartbeatLoopTimer(){
         while(IsConnected()) {
-            yield return new WaitForSeconds(HeartbeatIntervalMs / 1000.0f);
+            yield return new WaitForSeconds((float)HeartbeatIntervalMs / 1000.0f);
             SendHeartbeat();
         }
     }
