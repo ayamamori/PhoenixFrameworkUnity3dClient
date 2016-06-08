@@ -61,7 +61,7 @@ public class Channel : MonoBehaviour{
             if(state !=CHANNEL_STATES.JOINING) return;
             Debug.Log("Timeout on topic: "+Topic+" "+ joinPush.Timeout);
             state = CHANNEL_STATES.ERRORED;
-            StartCoroutine(RejoinLoopTimer());
+            StartCoroutine(RejoinLoopTimer());//FIXME
         });
 
         OnClose((payloadResp, refResp) => {
@@ -70,10 +70,10 @@ public class Channel : MonoBehaviour{
             Socket.Remove(this);
         });
 
-        OnError((reason, refResp) => {
-            Debug.Log("Error on topic: "+Topic+ " reason: "+reason);
+        OnError((payloadResp, refResp) => {
+            Debug.Log("Error on topic: "+Topic+ " reason: "+payloadResp.status);
             state = CHANNEL_STATES.ERRORED;
-            StartCoroutine(RejoinLoopTimer());
+            StartCoroutine(RejoinLoopTimer());//FIXME
         });
         OnReply((payloadResp, refResp) => {
             Trigger(ReplyEventName(refResp),payloadResp);

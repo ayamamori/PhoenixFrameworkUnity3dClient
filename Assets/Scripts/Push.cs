@@ -18,8 +18,6 @@ public class Push: MonoBehaviour {
     PayloadResp receivedResp;
     Dictionary<string,Action<string>> recHooks = new Dictionary<string, Action<string>>();
 
-    bool waitingResponse = false;
-
     // Initializes the Push
     //
     // channel - The Channel
@@ -52,17 +50,17 @@ public class Push: MonoBehaviour {
 
     public Push Receive(string status,Action<string> callback){
         if(HasReceived(status)){
-            callback(receivedResp.Response);
+            callback(receivedResp.response);
         }
         recHooks.Add(status,callback);
         return this;
     }
 
     void MatchReceive(PayloadResp msg){
-        recHooks.Where(kvp => kvp.Key.Equals(msg.Status))
+        recHooks.Where(kvp => kvp.Key.Equals(msg.status))
                 .Select(kvp => kvp.Value)
                 .ToList()
-                .ForEach(callback => callback(msg.Response));
+                .ForEach(callback => callback(msg.response));
     }
 
     void CancelRefEvent(){
@@ -71,29 +69,26 @@ public class Push: MonoBehaviour {
     }
 
     public void SetResponseListener(){
-        waitingResponse = true;
         push_ref = channel.Socket.MakeRef();
         refEvent = channel.ReplyEventName(push_ref);
         channel.On(refEvent, (payloadResp,refResp) => {
             CancelRefEvent();
-            waitingResponse = false;
+            StopCoroutine(StartTimeout());//FIXME
             receivedResp = payloadResp;
             MatchReceive(payloadResp);
         });
     }
     IEnumerator StartTimeout(){
         yield return new WaitForSeconds(Timeout/1000.0f);
-        if(waitingResponse) {
-            Trigger("timeout", new PayloadResp());
-        }
+        Trigger("timeout", new PayloadResp());
     }
 
     bool HasReceived(string _status){
-        return payloadResp !=null && payloadResp.Status == _status;
+        return payloadResp !=null && payloadResp.status == _status;
     }
 
     public void Trigger(string _status, PayloadResp payloadResp) {
-        payloadResp.Status = _status;
+        payloadResp.status = _status;
         channel.Trigger(refEvent,payloadResp);
     }
 

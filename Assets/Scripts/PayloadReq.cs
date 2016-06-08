@@ -2,9 +2,9 @@ using System;
 
 [Serializable]
 public class PayloadReq : Payload{
-    public string Content;
+    public string content;
 
     public PayloadReq(string _content=""){
-        Content = _content;
+        content = _content;
     }
 }

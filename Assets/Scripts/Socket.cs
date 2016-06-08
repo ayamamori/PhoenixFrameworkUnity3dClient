@@ -181,9 +181,8 @@ public class Socket : MonoBehaviour{
     }
 
     public void Push(Message<PayloadReq> message){
-        var jsonMessage = JsonUtility.ToJson(message);//FIXME: DOESN'T WORK
-        Action callback = () => conn.Send(JsonUtility.ToJson(jsonMessage));
-        Debug.Log("Push message: "+jsonMessage);
+        var jsonMessage = JsonUtility.ToJson(message);
+        Action callback = () => conn.Send(jsonMessage);
         if(IsConnected()){
             callback();
         }else{
@@ -222,10 +221,9 @@ public class Socket : MonoBehaviour{
     }
 
 
-    private void OnConnMessage(object sender, MessageEventArgs e){
-        Message<PayloadResp> msg = JsonUtility.FromJson<Message<PayloadResp>>(e.Data);//FIXME: MIGHT NOT WORK
-        Debug.Log(msg);
-        channels.Where(c => c.IsMember(msg.Topic)).ToList().ForEach(c => c.Trigger(msg.Event, msg.Payload,msg.Ref));
+    void OnConnMessage(object sender, MessageEventArgs e){
+        Message<PayloadResp> msg = JsonUtility.FromJson<Message<PayloadResp>>(e.Data);
+        channels.Where(c => c.IsMember(msg.topic)).ToList().ForEach(c => c.Trigger(msg.@event, msg.payload,msg.@ref));
 
         foreach (var callback in onMessageCallbacks) {
             callback(e);
