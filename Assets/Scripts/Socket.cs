@@ -221,7 +221,7 @@ public class Socket : MonoBehaviour{
     }
 
     private void SendHeartbeat(){
-        Push(new Message<PayloadReq>("phoenix","heartbeart",new PayloadReq(""),MakeRef()));
+        Push(new Message<PayloadReq>("phoenix","heartbeat",new PayloadReq(""),MakeRef()));
     }
 
     private void FlushSendBuffer(){
