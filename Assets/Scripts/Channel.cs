@@ -176,7 +176,7 @@ public class Channel : MonoBehaviour{
         return Leave(timeout);
     }
     Push Leave(int timeout){
-        Action<string> onClose = (nop) =>  {
+        Action<Response> onClose = (nop) =>  {
             Debug.Log("leave topic: "+Topic);
             Trigger(CHANNEL_EVENTS.CLOSE,new PayloadResp("leave"));
         };

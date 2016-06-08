@@ -233,8 +233,9 @@ public class Socket : MonoBehaviour{
 
 
     void OnConnMessage(object sender, MessageEventArgs e){
+        Debug.Log("Received message: " +e.Data);
         Message<PayloadResp> msg = JsonUtility.FromJson<Message<PayloadResp>>(e.Data);
-        Debug.Log("Received message: " +msg);
+        Debug.Log("Parsed message: " +msg);
         channels.Where(c => c.IsMember(msg.topic)).ToList().ForEach(c => c.Trigger(msg.@event, msg.payload,msg.@ref));
 
         foreach (var callback in onMessageCallbacks) {

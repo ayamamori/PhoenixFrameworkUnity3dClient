@@ -16,7 +16,7 @@ public class Push: MonoBehaviour {
     string push_ref;
     string refEvent;
     PayloadResp receivedResp;
-    Dictionary<string,Action<string>> recHooks = new Dictionary<string, Action<string>>();
+    Dictionary<string,Action<Response>> recHooks = new Dictionary<string, Action<Response>>();
 
     bool waitingResponse = false;
 
@@ -50,7 +50,7 @@ public class Push: MonoBehaviour {
         StartCoroutine(StartTimeout());
     }
 
-    public Push Receive(string status,Action<string> callback){
+    public Push Receive(string status,Action<Response> callback){
         if(HasReceived(status)){
             callback(receivedResp.response);
         }
